@@ -155,14 +155,26 @@ void MemoryDescriptor::DisplayPageTable()
 	Diagnose::Write("\n");
 }
 
+/* 去除相对表，主要对 MapToPageTbale 进行修改。
+ * 主要思想：MemoryDescriptor 里已经有了代码段、数据段的起始地址和长度字段，那么就不需要相对表，
+ * 直接用这些字段进行映射即可。
+ * （顺便一提，设置 MemoryDescriptor 里这些字段的是 exec 系统调用）
+ */
+
 void MemoryDescriptor::MapToPageTable()
 {
 	User& u = Kernel::Instance().GetUser();
 
+	// if(u.u_MemoryDescriptor.m_UserPageTableArray == NULL)
+	// 	return;
+	
 	if(u.u_MemoryDescriptor.m_UserPageTableArray == NULL)
-		return;
+	 	return;
 
 	PageTable* pUserPageTable = Machine::Instance().GetUserPageTableArray();
+
+	/* 得到共享正文段和可交换部分的物理页框号 */
+
 	unsigned int textPF = 0;
 	if ( u.u_procp->p_textp != NULL )
 	{
@@ -171,29 +183,72 @@ void MemoryDescriptor::MapToPageTable()
 
 	unsigned int pAddrPF = u.u_procp->p_addr >> 12;
 
+	/* 测试的时候发现一个问题，只要有超过一个循环遍历，即使循环内部是空操作，就会造成内核启动后
+	 * 系统打印区仅显示引导信息、Diagnose::Write 不工作的问题，除此之外能够正常运行
+	 * 因此这里尝试在一个循环内完成映射。
+	 */
+
+	/* 共享正文段的映射信息 */
+
+	unsigned long textStartUserPageTabelIdx = this->m_TextStartAddress >> 22;
+	unsigned long textStartEntryIdx = (this->m_TextStartAddress >> 12) & 0x3ff;
+	unsigned long textEntryCnt = (this->m_TextSize + (PageManager::PAGE_SIZE - 1)) / PageManager::PAGE_SIZE;
+	unsigned long textIdx = 0;
+
+	/* 可交换部分的映射信息 */
+
+	unsigned long dataStartUserPageTabelIdx = this->m_DataStartAddress >> 22;
+	unsigned long dataStartEntryIdx = (this->m_DataStartAddress >> 12) & 0x3ff;
+	unsigned long dataEntryCnt = (this->m_DataSize + (PageManager::PAGE_SIZE - 1)) / PageManager::PAGE_SIZE;
+	unsigned long dataIdx = 1;
+
+	/* 堆栈段的映射信息，栈固定在用户第二张页表末尾 */
+
+	unsigned long stackStartAddress = (USER_SPACE_START_ADDRESS + USER_SPACE_SIZE - this->m_StackSize) & 0xFFFFF000;
+	unsigned long stackStartUserPageTabelIdx = stackStartAddress >> 22;	// 实际固定为 1
+	unsigned long stackStartEntryIdx = (stackStartAddress >> 12) & 0x3ff;
+	unsigned long stackEntryCnt = (this->m_StackSize + (PageManager::PAGE_SIZE - 1)) / PageManager::PAGE_SIZE;
+	//unsigned long stackIdx = 0;
+
+	/* 映射 */
+
 	for (unsigned int i = 0; i < Machine::USER_PAGE_TABLE_CNT; i++)
 	{
 		for ( unsigned int j = 0; j < PageTable::ENTRY_CNT_PER_PAGETABLE; j++ )
 		{
 			pUserPageTable[i].m_Entrys[j].m_Present = 0;   // 清0表示该逻辑页不存在
-
-			if ( 1 == this->m_UserPageTableArray[i].m_Entrys[j].m_Present )
+			
+			if (i == textStartUserPageTabelIdx && j >= textStartEntryIdx && textIdx < textEntryCnt)
 			{
-				if ( 0 == this->m_UserPageTableArray[i].m_Entrys[j].m_ReadWriter )      // RO逻辑页
-				{
-					pUserPageTable[i].m_Entrys[j].m_Present = 1;
-					pUserPageTable[i].m_Entrys[j].m_ReadWriter = 0;
-					pUserPageTable[i].m_Entrys[j].m_PageBaseAddress = this->m_UserPageTableArray[i].m_Entrys[j].m_PageBaseAddress + textPF;
-				}
-				else if ( 1 == this->m_UserPageTableArray[i].m_Entrys[j].m_ReadWriter )    // RW逻辑页
-				{
-					pUserPageTable[i].m_Entrys[j].m_Present = 1;
-					pUserPageTable[i].m_Entrys[j].m_ReadWriter = 1;
-					pUserPageTable[i].m_Entrys[j].m_PageBaseAddress = this->m_UserPageTableArray[i].m_Entrys[j].m_PageBaseAddress + pAddrPF;
-				}
+				pUserPageTable[i].m_Entrys[j].m_Present = 1;
+				pUserPageTable[i].m_Entrys[j].m_ReadWriter = 0;	// RO
+				pUserPageTable[i].m_Entrys[j].m_PageBaseAddress = textIdx + textPF;
+
+				textIdx++;
 			}
+			
+			if (i == dataStartUserPageTabelIdx && j >= dataStartEntryIdx && dataIdx < 1 + dataEntryCnt)	// 可交换部分第一页是 PPDA，所以要 + 1
+			{
+				pUserPageTable[i].m_Entrys[j].m_Present = 1;
+				pUserPageTable[i].m_Entrys[j].m_ReadWriter = 1;	// RW
+				pUserPageTable[i].m_Entrys[j].m_PageBaseAddress = dataIdx + pAddrPF;
+
+				dataIdx++;
+			}
+			
+			if (i == stackStartUserPageTabelIdx && j >= stackStartEntryIdx && dataIdx < 1 + dataEntryCnt + stackEntryCnt)
+			{
+				pUserPageTable[i].m_Entrys[j].m_Present = 1;
+				pUserPageTable[i].m_Entrys[j].m_ReadWriter = 1;	// RW
+				pUserPageTable[i].m_Entrys[j].m_PageBaseAddress = dataIdx + pAddrPF;
+
+				dataIdx++;
+			}
+
 		}
 	}
+
+	/* 最后，用户第一张页表的第一项 */
 
 	pUserPageTable[0].m_Entrys[0].m_Present = 1;
 	pUserPageTable[0].m_Entrys[0].m_ReadWriter = 1;
