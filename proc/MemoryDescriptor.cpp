@@ -5,60 +5,64 @@
 #include "PageDirectory.h"
 #include "Video.h"
 
+/* 不使用相对表，以下函数实际上不需要了 */
+
 void MemoryDescriptor::Initialize()
 {
-	KernelPageManager& kernelPageManager = Kernel::Instance().GetKernelPageManager();
+	// KernelPageManager& kernelPageManager = Kernel::Instance().GetKernelPageManager();
 	
 	/* m_UserPageTableArray需要把AllocMemory()返回的物理内存地址 + 0xC0000000 */
-	this->m_UserPageTableArray = (PageTable*)(kernelPageManager.AllocMemory(sizeof(PageTable) * USER_SPACE_PAGE_TABLE_CNT) + Machine::KERNEL_SPACE_START_ADDRESS);
+	// this->m_UserPageTableArray = (PageTable*)(kernelPageManager.AllocMemory(sizeof(PageTable) * USER_SPACE_PAGE_TABLE_CNT) + Machine::KERNEL_SPACE_START_ADDRESS);
 }
 
 void MemoryDescriptor::Release()
 {
-	KernelPageManager& kernelPageManager = Kernel::Instance().GetKernelPageManager();
-	if ( this->m_UserPageTableArray )
-	{
-		kernelPageManager.FreeMemory(sizeof(PageTable) * USER_SPACE_PAGE_TABLE_CNT, (unsigned long)this->m_UserPageTableArray - Machine::KERNEL_SPACE_START_ADDRESS);
-		this->m_UserPageTableArray = NULL;
-	}
+	// KernelPageManager& kernelPageManager = Kernel::Instance().GetKernelPageManager();
+	// if ( this->m_UserPageTableArray )
+	// {
+	// 	kernelPageManager.FreeMemory(sizeof(PageTable) * USER_SPACE_PAGE_TABLE_CNT, (unsigned long)this->m_UserPageTableArray - Machine::KERNEL_SPACE_START_ADDRESS);
+	// 	this->m_UserPageTableArray = NULL;
+	// }
 }
 
 unsigned int MemoryDescriptor::MapEntry(unsigned long virtualAddress, unsigned int size, unsigned long phyPageIdx, bool isReadWrite)
 {	
-	unsigned long address = virtualAddress - USER_SPACE_START_ADDRESS;
+	// unsigned long address = virtualAddress - USER_SPACE_START_ADDRESS;
 	
-	//计算从pagetable的哪一个地址开始映射
-	unsigned long startIdx = address >> 12;
-	unsigned long cnt = ( size + (PageManager::PAGE_SIZE - 1) )/ PageManager::PAGE_SIZE;
+	// //计算从pagetable的哪一个地址开始映射
+	// unsigned long startIdx = address >> 12;
+	// unsigned long cnt = ( size + (PageManager::PAGE_SIZE - 1) )/ PageManager::PAGE_SIZE;
 
-	PageTableEntry* entrys = (PageTableEntry*)this->m_UserPageTableArray;
-	for ( unsigned int i = startIdx; i < startIdx + cnt; i++, phyPageIdx++ )
-	{
-		entrys[i].m_Present = 0x1;
-		entrys[i].m_ReadWriter = isReadWrite;
-		entrys[i].m_PageBaseAddress = phyPageIdx;
-	}
-	return phyPageIdx;
+	// PageTableEntry* entrys = (PageTableEntry*)this->m_UserPageTableArray;
+	// for ( unsigned int i = startIdx; i < startIdx + cnt; i++, phyPageIdx++ )
+	// {
+	// 	entrys[i].m_Present = 0x1;
+	// 	entrys[i].m_ReadWriter = isReadWrite;
+	// 	entrys[i].m_PageBaseAddress = phyPageIdx;
+	// }
+	// return phyPageIdx;
 }
 
 void MemoryDescriptor::MapTextEntrys(unsigned long textStartAddress, unsigned long textSize, unsigned long textPageIdx)
 {
-	this->MapEntry(textStartAddress, textSize, textPageIdx, false);
+	// this->MapEntry(textStartAddress, textSize, textPageIdx, false);
 }
 void MemoryDescriptor::MapDataEntrys(unsigned long dataStartAddress, unsigned long dataSize, unsigned long dataPageIdx)
 {
-	this->MapEntry(dataStartAddress, dataSize, dataPageIdx, true);
+	// this->MapEntry(dataStartAddress, dataSize, dataPageIdx, true);
 }
 
 void MemoryDescriptor::MapStackEntrys(unsigned long stackSize, unsigned long stackPageIdx)
 {
-	unsigned long stackStartAddress = (USER_SPACE_START_ADDRESS + USER_SPACE_SIZE - stackSize) & 0xFFFFF000;
-	this->MapEntry(stackStartAddress, stackSize, stackPageIdx, true);
+	// unsigned long stackStartAddress = (USER_SPACE_START_ADDRESS + USER_SPACE_SIZE - stackSize) & 0xFFFFF000;
+	// this->MapEntry(stackStartAddress, stackSize, stackPageIdx, true);
 }
+
+/* GetUserPageTableArray不需要 */
 
 PageTable* MemoryDescriptor::GetUserPageTableArray()
 {
-	return this->m_UserPageTableArray;
+	// return this->m_UserPageTableArray;
 }
 unsigned long MemoryDescriptor::GetTextStartAddress()
 {
@@ -81,6 +85,8 @@ unsigned long MemoryDescriptor::GetStackSize()
 	return this->m_StackSize;
 }
 
+/* 检查是否超出空间限制，然后直接调用 MapToPageTable 建立页表 */
+
 bool MemoryDescriptor::EstablishUserPageTable( unsigned long textVirtualAddress, unsigned long textSize, unsigned long dataVirtualAddress, unsigned long dataSize, unsigned long stackSize )
 {
 	User& u = Kernel::Instance().GetUser();
@@ -93,55 +99,70 @@ bool MemoryDescriptor::EstablishUserPageTable( unsigned long textVirtualAddress,
 		return false;
 	}
 
-	this->ClearUserPageTable();
+	/* 给的实验参考里，这里更新了 MemoryDescriptor 的各逻辑段信息，但是按现在的实现来看不做也可以
+	 * 因为目前引用这个函数的场景，输入参数都是直接用的 MemoryDescriptor 的各逻辑段信息，所以相当于没更新
+	 * 除了 Exec 中输入参数是程序头里的逻辑段的信息，不过Exec里同样包含用这些信息更新 MD 字段的逻辑，所以用不着
+	 */
 
-	/* 以页框偏移量phyPageIndex == 0，为正文段建立相对地址映照表 */
-	unsigned int phyPageIndex = 0;
-	phyPageIndex = this->MapEntry(textVirtualAddress, textSize, phyPageIndex, false);
+	this->m_TextStartAddress = textVirtualAddress;
+	this->m_TextSize = textSize;
+	this->m_DataStartAddress = dataVirtualAddress;
+	this->m_DataSize = dataSize;
+	this->m_StackSize = stackSize;
 
-	/* 以相对起始地址phyPageIndex为1，ppda区占用1页4K大小物理内存，为数据段建立相对地址映照表 */
-	phyPageIndex = 1;
-	phyPageIndex = this->MapEntry(dataVirtualAddress, dataSize, phyPageIndex, true);
+	// this->ClearUserPageTable();
 
-	/* 紧跟着数据段之后，为堆栈段建立相对地址映照表 */
-	unsigned long stackStartAddress = (USER_SPACE_START_ADDRESS + USER_SPACE_SIZE - stackSize) & 0xFFFFF000;
-	this->MapEntry(stackStartAddress, stackSize, phyPageIndex, true);
+	// /* 以页框偏移量phyPageIndex == 0，为正文段建立相对地址映照表 */
+	// unsigned int phyPageIndex = 0;
+	// phyPageIndex = this->MapEntry(textVirtualAddress, textSize, phyPageIndex, false);
+
+	// /* 以相对起始地址phyPageIndex为1，ppda区占用1页4K大小物理内存，为数据段建立相对地址映照表 */
+	// phyPageIndex = 1;
+	// phyPageIndex = this->MapEntry(dataVirtualAddress, dataSize, phyPageIndex, true);
+
+	// /* 紧跟着数据段之后，为堆栈段建立相对地址映照表 */
+	// unsigned long stackStartAddress = (USER_SPACE_START_ADDRESS + USER_SPACE_SIZE - stackSize) & 0xFFFFF000;
+	// this->MapEntry(stackStartAddress, stackSize, phyPageIndex, true);
 
 	/* 将相对地址映照表根据正文段和数据段在内存中的起始地址pText->x_caddr、p_addr，建立用户态内存区的页表映射 */
 	this->MapToPageTable();
 	return true;
 }
 
+/* ClearUserPageTable 不需要 */
+
 void MemoryDescriptor::ClearUserPageTable()
 {
-	User& u = Kernel::Instance().GetUser();
-	PageTable* pUserPageTable = u.u_MemoryDescriptor.m_UserPageTableArray;
+	// User& u = Kernel::Instance().GetUser();
+	// PageTable* pUserPageTable = u.u_MemoryDescriptor.m_UserPageTableArray;
 
-	unsigned int i ;
-	unsigned int j ;
+	// unsigned int i ;
+	// unsigned int j ;
 
-	for (i = 0; i < Machine::USER_PAGE_TABLE_CNT; i++)
-	{
-		for (j = 0; j < PageTable::ENTRY_CNT_PER_PAGETABLE; j++ )
-		{
-			pUserPageTable[i].m_Entrys[j].m_Present = 0;
-			pUserPageTable[i].m_Entrys[j].m_ReadWriter = 0;
-			pUserPageTable[i].m_Entrys[j].m_UserSupervisor = 1;
-			pUserPageTable[i].m_Entrys[j].m_PageBaseAddress = 0;
-		}
-	}
+	// for (i = 0; i < Machine::USER_PAGE_TABLE_CNT; i++)
+	// {
+	// 	for (j = 0; j < PageTable::ENTRY_CNT_PER_PAGETABLE; j++ )
+	// 	{
+	// 		pUserPageTable[i].m_Entrys[j].m_Present = 0;
+	// 		pUserPageTable[i].m_Entrys[j].m_ReadWriter = 0;
+	// 		pUserPageTable[i].m_Entrys[j].m_UserSupervisor = 1;
+	// 		pUserPageTable[i].m_Entrys[j].m_PageBaseAddress = 0;
+	// 	}
+	// }
 
 }
+
+/* DisplayPageTable 注释掉显示相对表的逻辑，只显示页表（不过系统打印区显示不了所以也没什么用） */
 
 void MemoryDescriptor::DisplayPageTable()
 {
 	unsigned int i,j;
 
-	Diagnose::Write("Process PT:");
-	for (i = 0; i < Machine::USER_PAGE_TABLE_CNT; i++)
-		for ( j = 0; j < PageTable::ENTRY_CNT_PER_PAGETABLE; j++)
-			if ( 1 == this->m_UserPageTableArray[i].m_Entrys[j].m_Present )
-				Diagnose::Write("<%d,%x>  ",i*1024+j,this->m_UserPageTableArray[i].m_Entrys[j].m_PageBaseAddress);
+	// Diagnose::Write("Process PT:");
+	// for (i = 0; i < Machine::USER_PAGE_TABLE_CNT; i++)
+	// 	for ( j = 0; j < PageTable::ENTRY_CNT_PER_PAGETABLE; j++)
+	// 		if ( 1 == this->m_UserPageTableArray[i].m_Entrys[j].m_Present )
+	// 			Diagnose::Write("<%d,%x>  ",i*1024+j,this->m_UserPageTableArray[i].m_Entrys[j].m_PageBaseAddress);
 	Diagnose::Write("\n");
 
 	Diagnose::Write("<PPDA,%x>  ",Machine::Instance().GetKernelPageTable().m_Entrys[1023].m_PageBaseAddress);
@@ -159,11 +180,6 @@ void MemoryDescriptor::DisplayPageTable()
  * 主要思想：MemoryDescriptor 里已经有了代码段、数据段的起始地址和长度字段，那么就不需要相对表，
  * 直接用这些字段进行映射即可。
  * （顺便一提，设置 MemoryDescriptor 里这些字段的是 exec 系统调用）
- */
-
-/* 测试的时候发现，只要这个函数里声明一个新的变量，或构造一个空循环，就会造成内核启动后
- * 系统打印区仅显示引导信息、Diagnose::Write 不工作的问题，除此之外能够正常运行。
- * 暂未找到解决方案。
  */
 
 void MemoryDescriptor::MapToPageTable()
