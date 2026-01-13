@@ -67,6 +67,9 @@ public:
 
 	unsigned long	m_StackSize;		/* 栈段长度 */
 	//unsigned long	m_HeapSize;			/* 堆段长度 */
+
+	unsigned long   m_RdataStartAddress;
+	unsigned long   m_RdataSize;
 };
 
 #endif

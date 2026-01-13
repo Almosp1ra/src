@@ -503,6 +503,10 @@ void ProcessManager::Exec()
 
 	/* 堆栈段初始化长度 */
 	u.u_MemoryDescriptor.m_StackSize = parser.StackSize;
+
+	/* 只读数据段的起始地址、长度 */
+	u.u_MemoryDescriptor.m_RdataStartAddress = parser.RdataAddress;
+	u.u_MemoryDescriptor.m_RdataSize = parser.RdataSize;
 	
 	if ( parser.TextSize + parser.DataSize + parser.StackSize  + PageManager::PAGE_SIZE > MemoryDescriptor::USER_SPACE_SIZE - parser.TextAddress)
 	{

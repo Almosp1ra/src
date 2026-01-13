@@ -162,6 +162,12 @@ bool PEParser::HeaderLoad(Inode* p_inode)
     StackSize = ntHeader.OptionalHeader.SizeOfStackCommit;
     HeapSize = ntHeader.OptionalHeader.SizeOfHeapCommit;
 
+	/* 读取 .rdata 段信息 */
+
+	this->RdataAddress =
+		this->sectionHeaders[this->RDATA_SECTION_IDX].VirtualAddress + ntHeader.OptionalHeader.ImageBase;
+	this->RdataSize = this->sectionHeaders[this->BSS_SECTION_IDX].VirtualAddress - this->sectionHeaders[this->RDATA_SECTION_IDX].VirtualAddress;
+
     EntryPointAddress = ntHeader.OptionalHeader.AddressOfEntryPoint +
                     ntHeader.OptionalHeader.ImageBase;
 

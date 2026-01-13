@@ -150,6 +150,9 @@ public:
 
 	unsigned long StackSize;
 	unsigned long HeapSize;
+	
+	unsigned long RdataAddress;
+	unsigned long RdataSize;
 
 private:
 	unsigned long peAddress;
