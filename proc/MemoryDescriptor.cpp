@@ -161,15 +161,17 @@ void MemoryDescriptor::DisplayPageTable()
  * （顺便一提，设置 MemoryDescriptor 里这些字段的是 exec 系统调用）
  */
 
+/* 测试的时候发现，只要这个函数里声明一个新的变量，或构造一个空循环，就会造成内核启动后
+ * 系统打印区仅显示引导信息、Diagnose::Write 不工作的问题，除此之外能够正常运行。
+ * 暂未找到解决方案。
+ */
+
 void MemoryDescriptor::MapToPageTable()
 {
 	User& u = Kernel::Instance().GetUser();
 
 	// if(u.u_MemoryDescriptor.m_UserPageTableArray == NULL)
 	// 	return;
-	
-	if(u.u_MemoryDescriptor.m_UserPageTableArray == NULL)
-	 	return;
 
 	PageTable* pUserPageTable = Machine::Instance().GetUserPageTableArray();
 
@@ -182,11 +184,6 @@ void MemoryDescriptor::MapToPageTable()
 	}
 
 	unsigned int pAddrPF = u.u_procp->p_addr >> 12;
-
-	/* 测试的时候发现一个问题，只要有超过一个循环遍历，即使循环内部是空操作，就会造成内核启动后
-	 * 系统打印区仅显示引导信息、Diagnose::Write 不工作的问题，除此之外能够正常运行
-	 * 因此这里尝试在一个循环内完成映射。
-	 */
 
 	/* 共享正文段的映射信息 */
 
@@ -208,7 +205,6 @@ void MemoryDescriptor::MapToPageTable()
 	unsigned long stackStartUserPageTabelIdx = stackStartAddress >> 22;	// 实际固定为 1
 	unsigned long stackStartEntryIdx = (stackStartAddress >> 12) & 0x3ff;
 	unsigned long stackEntryCnt = (this->m_StackSize + (PageManager::PAGE_SIZE - 1)) / PageManager::PAGE_SIZE;
-	//unsigned long stackIdx = 0;
 
 	/* 映射 */
 
