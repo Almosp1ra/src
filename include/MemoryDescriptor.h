@@ -58,7 +58,6 @@ private:
 	unsigned int MemoryDescriptor::MapEntry(unsigned long virtualAddress, unsigned int size, unsigned long phyPageIdx, bool isReadWrite);
 	
 public:
-	PageTable*		m_UserPageTableArray;
 	/* 以下数据都是线性地址 */
 	unsigned long	m_TextStartAddress;	/* 代码段起始地址 */
 	unsigned long	m_TextSize;			/* 代码段长度 */
