@@ -58,7 +58,7 @@ unsigned long MemoryDescriptor::GetStackSize()
 
 /* 检查是否超出空间限制，然后直接调用 MapToPageTable 建立页表 */
 
-bool MemoryDescriptor::EstablishUserPageTable( unsigned long textVirtualAddress, unsigned long textSize, unsigned long dataVirtualAddress, unsigned long dataSize, unsigned long stackSize )
+bool MemoryDescriptor::EstablishUserPageTable( unsigned long textVirtualAddress, unsigned long textSize, unsigned long dataVirtualAddress, unsigned long dataSize, unsigned long stackSize, unsigned long rdataVirtualAddress, unsigned long rdataSize )
 {
 	User& u = Kernel::Instance().GetUser();
 
@@ -80,6 +80,8 @@ bool MemoryDescriptor::EstablishUserPageTable( unsigned long textVirtualAddress,
 	this->m_DataStartAddress = dataVirtualAddress;
 	this->m_DataSize = dataSize;
 	this->m_StackSize = stackSize;
+	this->m_RdataStartAddress = rdataVirtualAddress;
+	this->m_RdataSize = rdataSize;
 
 	/* 将相对地址映照表根据正文段和数据段在内存中的起始地址pText->x_caddr、p_addr，建立用户态内存区的页表映射 */
 	this->MapToPageTable();

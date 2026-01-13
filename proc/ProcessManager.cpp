@@ -626,7 +626,7 @@ void ProcessManager::Exec()
 		pText->x_ccount = 1;
 		pText->x_count = 1;
 		pText->x_iptr = pInode;
-		pText->x_size = u.u_MemoryDescriptor.m_TextSize;
+		pText->x_size = u.u_MemoryDescriptor.m_TextSize + u.u_MemoryDescriptor.m_RdataSize;	// 移动 .rdata，正文段加上 .rdata 长度
 		/* 为正文段分配内存，而具体正文段内容的读入需要等到建立页表映射之后，再从mapAddress地址起始的exe文件中读入 */
 		pText->x_caddr = userPgMgr.AllocMemory(pText->x_size);
 		pText->x_daddr = Kernel::Instance().GetSwapperManager().AllocSwap(pText->x_size);
@@ -639,7 +639,7 @@ void ProcessManager::Exec()
 		sharedText = 1;
 	}
 
-	unsigned int newSize = ProcessManager::USIZE + u.u_MemoryDescriptor.m_DataSize + u.u_MemoryDescriptor.m_StackSize;
+	unsigned int newSize = ProcessManager::USIZE + u.u_MemoryDescriptor.m_DataSize + u.u_MemoryDescriptor.m_StackSize;	// 移动 .rdata，可交换部分减去 .rdata 长度
 	/* 将进程图像由USIZE扩充为USIZE + dataSize + stackSize */
 	u.u_procp->Expand(newSize);
 
@@ -647,7 +647,7 @@ void ProcessManager::Exec()
 			u.u_procp->p_pid,u.u_procp->p_addr,u.u_procp->p_textp->x_caddr,u.u_procp->p_size,u.u_procp->p_textp->x_size);
 
 	/* 根据正文段、数据段、堆栈段长度建立相对地址映照表，并加载到页表中 */
-	u.u_MemoryDescriptor.EstablishUserPageTable(parser.TextAddress, parser.TextSize, parser.DataAddress, parser.DataSize, parser.StackSize);
+	u.u_MemoryDescriptor.EstablishUserPageTable(parser.TextAddress, parser.TextSize, parser.DataAddress, parser.DataSize, parser.StackSize, parser.RdataAddress, parser.RdataSize);
 
 	u.u_MemoryDescriptor.DisplayPageTable();
 
