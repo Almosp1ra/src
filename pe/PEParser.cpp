@@ -29,6 +29,7 @@ unsigned int PEParser::Relocate(Inode* p_inode, int sharedText)
 	/* 如果可以和其它进程共享正文段，无需文件中读入正文段 */
 	PageTable* pUserPageTable = Machine::Instance().GetUserPageTableArray();
 	unsigned int textBegin = this->TextAddress >> 12 , textLength = this->TextSize >> 12;
+	unsigned int rdataBegin = this->RdataAddress >> 12 , rdataLength = this->RdataSize >> 12;
 	PageTableEntry* pointer = (PageTableEntry *)pUserPageTable;
 
 	/*如果与其它进程共享正文段，共享正文段切不可清0*/
@@ -40,6 +41,9 @@ unsigned int PEParser::Relocate(Inode* p_inode, int sharedText)
 		// 修改正文段的读写标志，为内核写代码段做准备
 		for (i0 = textBegin; i0 < textBegin + textLength; i0++)
 			pointer[i0].m_ReadWriter = 1;
+		// 因为移动了只读数据段，所以只读数据段也要修改
+		for (i0 = rdataBegin; i0 < rdataBegin + rdataLength; i0++)
+			pointer[i0].m_ReadWriter = 1;
 
 		FlushPageDirectory();
 	}
@@ -47,6 +51,9 @@ unsigned int PEParser::Relocate(Inode* p_inode, int sharedText)
     /* 对所有页面执行清0操作，这样bss变量的初值就是0 */
 	for (; i <= this->BSS_SECTION_IDX; i++ )
 	{
+		if (sharedText == 1 && i == this->RDATA_SECTION_IDX)	// 因为rdata现在也属于正文段，所以跳过清0
+			continue;
+
 		ImageSectionHeader* sectionHeader = &(this->sectionHeaders[i]);
 		int beginVM = sectionHeader->VirtualAddress + ntHeader.OptionalHeader.ImageBase;
 		int size = ((sectionHeader->Misc.VirtualSize + PageManager::PAGE_SIZE - 1)>>12)<<12;
@@ -68,6 +75,9 @@ unsigned int PEParser::Relocate(Inode* p_inode, int sharedText)
 
 	for ( ; i < this->BSS_SECTION_IDX; i++ )
 	{
+		if (sharedText == 1 && i == this->RDATA_SECTION_IDX)	// 因为rdata现在也属于正文段，所以跳过写
+			continue;
+		
 		ImageSectionHeader* sectionHeader = &(this->sectionHeaders[i]);
 		srcAddress = sectionHeader->PointerToRawData;
 		desAddress =
@@ -85,6 +95,9 @@ unsigned int PEParser::Relocate(Inode* p_inode, int sharedText)
 	if(sharedText == 0)
 	{   //将正文段页面改回只读
 		for (i0 = textBegin; i0 < textBegin + textLength; i0++)
+			pointer[i0].m_ReadWriter = 0;
+		// 因为移动了只读数据段，所以只读数据段也要修改
+		for (i0 = rdataBegin; i0 < rdataBegin + rdataLength; i0++)
 			pointer[i0].m_ReadWriter = 0;
 
 		FlushPageDirectory();

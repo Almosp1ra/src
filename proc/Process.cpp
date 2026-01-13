@@ -329,10 +329,10 @@ void Process::SStack()
 	unsigned int change = 4096;
 	//unsigned int change = 0;
 	md.m_StackSize += change;
-	unsigned int newSize = ProcessManager::USIZE + md.m_DataSize + md.m_StackSize;
+	unsigned int newSize = ProcessManager::USIZE + md.m_DataSize + md.m_StackSize - md.m_RdataSize;	// newSize 是实际可交换部分的长度，所以需要减去 rdata 长度
 
 	if ( false == u.u_MemoryDescriptor.EstablishUserPageTable(md.m_TextStartAddress,
-						md.m_TextSize, md.m_DataStartAddress, md.m_DataSize, md.m_StackSize) )
+						md.m_TextSize, md.m_DataStartAddress, md.m_DataSize, md.m_StackSize, md.m_RdataStartAddress, md.m_RdataSize) )
 	{
 		u.u_error = User::ENOMEM;
 		return;
@@ -354,9 +354,9 @@ void Process::SStack()
 void Process::SBreak()
 {
 	User& u = Kernel::Instance().GetUser();
-	unsigned int newEnd = u.u_arg[0];
+	unsigned int newEnd = u.u_arg[0];	// 这里传递是正确的堆起始虚地址，因此移动 rdata 段可以直接用这个来计算
 	MemoryDescriptor& md = u.u_MemoryDescriptor;
-	unsigned int newSize = newEnd - md.m_DataStartAddress;
+	unsigned int newSize = newEnd - md.m_DataStartAddress;	// 这个 newSize 是虚空间包含 rdata 段的数据段长度，不用动
 
 	if (newEnd == 0)
 	{
@@ -365,7 +365,7 @@ void Process::SBreak()
 	}
 
 	if ( false == u.u_MemoryDescriptor.EstablishUserPageTable(md.m_TextStartAddress, 
-						md.m_TextSize, md.m_DataStartAddress, newSize, md.m_StackSize) )
+						md.m_TextSize, md.m_DataStartAddress, newSize, md.m_StackSize, md.m_RdataStartAddress, md.m_RdataSize) )
 	{
 		//系统调用出错时，不可以用这种方式返回。执行这条路径会导致 u.u_intflg == 1，u.u_error被错误修改为EINTR（4）；无论何故导致系统调用失败。
 		//aRetU(u.u_qsav);
@@ -374,7 +374,7 @@ void Process::SBreak()
 
 	int change = newSize - md.m_DataSize;
 	md.m_DataSize = newSize;
-	newSize += ProcessManager::USIZE + md.m_StackSize;
+	newSize += ProcessManager::USIZE + md.m_StackSize - md.m_RdataSize;	// 之后用到的 newSize 都是实空间可交换部分的长度，减去 rdata
 
 	/* 数据段缩小 */
 	if ( change < 0 )

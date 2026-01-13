@@ -38,7 +38,7 @@ public:
 	 * @comment 原unix v6中estabur()函数，用于建立用户态地址空间的相对地址映射表，然后调用
 	 * MapToPageTable()函数将相对地址映射表加载到用户态页表中。
 	 */
-	bool EstablishUserPageTable(unsigned long textVirtualAddress, unsigned long textSize, unsigned long dataVirtualAddress, unsigned long dataSize, unsigned long stackSize);
+	bool EstablishUserPageTable(unsigned long textVirtualAddress, unsigned long textSize, unsigned long dataVirtualAddress, unsigned long dataSize, unsigned long stackSize, unsigned long rdataVirtualAddress, unsigned long rdataSize);
 	void ClearUserPageTable();
 	PageTable* GetUserPageTableArray();
 	unsigned long GetTextStartAddress();

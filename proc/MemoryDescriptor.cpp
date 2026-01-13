@@ -154,6 +154,12 @@ void MemoryDescriptor::MapToPageTable()
 	unsigned long stackStartEntryIdx = (stackStartAddress >> 12) & 0x3ff;
 	unsigned long stackEntryCnt = (this->m_StackSize + (PageManager::PAGE_SIZE - 1)) / PageManager::PAGE_SIZE;
 
+	/* 只读数据段的映射信息，虚空间中属于数据段，实空间中和代码段放在一起 */
+
+	unsigned long rdataStartUserPageTabelIdx = dataStartUserPageTabelIdx;
+	unsigned long rdataStartEntryIdx = (this->m_RdataStartAddress >> 12) & 0x3ff;
+	unsigned long rdataEntryCnt = (this->m_RdataSize + (PageManager::PAGE_SIZE - 1)) / PageManager::PAGE_SIZE;
+
 	/* 映射 */
 
 	for (unsigned int i = 0; i < Machine::USER_PAGE_TABLE_CNT; i++)
@@ -162,7 +168,7 @@ void MemoryDescriptor::MapToPageTable()
 		{
 			pUserPageTable[i].m_Entrys[j].m_Present = 0;   // 清0表示该逻辑页不存在
 			
-			if (i == textStartUserPageTabelIdx && j >= textStartEntryIdx && textIdx < textEntryCnt)
+			if (i == textStartUserPageTabelIdx && j >= textStartEntryIdx && textIdx < textEntryCnt)	// 正文段映射
 			{
 				pUserPageTable[i].m_Entrys[j].m_Present = 1;
 				pUserPageTable[i].m_Entrys[j].m_ReadWriter = 0;	// RO
@@ -171,16 +177,28 @@ void MemoryDescriptor::MapToPageTable()
 				textIdx++;
 			}
 			
-			if (i == dataStartUserPageTabelIdx && j >= dataStartEntryIdx && dataIdx < 1 + dataEntryCnt)	// 可交换部分第一页是 PPDA，所以要 + 1
+			if (i == rdataStartUserPageTabelIdx && j >= rdataStartEntryIdx && textIdx < textEntryCnt + rdataEntryCnt)	// 只读数据段映射
 			{
 				pUserPageTable[i].m_Entrys[j].m_Present = 1;
-				pUserPageTable[i].m_Entrys[j].m_ReadWriter = 1;	// RW
-				pUserPageTable[i].m_Entrys[j].m_PageBaseAddress = dataIdx + pAddrPF;
+				pUserPageTable[i].m_Entrys[j].m_ReadWriter = 0;	// RO
+				pUserPageTable[i].m_Entrys[j].m_PageBaseAddress = textIdx + textPF;
 
-				dataIdx++;
+				textIdx++;
 			}
 			
-			if (i == stackStartUserPageTabelIdx && j >= stackStartEntryIdx && dataIdx < 1 + dataEntryCnt + stackEntryCnt)
+			if (i == dataStartUserPageTabelIdx && j >= dataStartEntryIdx && dataIdx < 1 + dataEntryCnt - rdataEntryCnt)	// 可交换部分第一页是 PPDA，所以要 + 1
+			{
+				if (j < rdataStartEntryIdx || j >= rdataStartEntryIdx + rdataEntryCnt)	// 排除只读数据段，只映射其他部分
+				{
+					pUserPageTable[i].m_Entrys[j].m_Present = 1;
+					pUserPageTable[i].m_Entrys[j].m_ReadWriter = 1;	// RW
+					pUserPageTable[i].m_Entrys[j].m_PageBaseAddress = dataIdx + pAddrPF;
+
+					dataIdx++;
+				}
+			}
+			
+			if (i == stackStartUserPageTabelIdx && j >= stackStartEntryIdx && dataIdx < 1 + dataEntryCnt - rdataEntryCnt + stackEntryCnt)	// 堆栈段映射
 			{
 				pUserPageTable[i].m_Entrys[j].m_Present = 1;
 				pUserPageTable[i].m_Entrys[j].m_ReadWriter = 1;	// RW

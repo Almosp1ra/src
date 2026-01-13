@@ -639,7 +639,7 @@ void ProcessManager::Exec()
 		sharedText = 1;
 	}
 
-	unsigned int newSize = ProcessManager::USIZE + u.u_MemoryDescriptor.m_DataSize + u.u_MemoryDescriptor.m_StackSize;	// 移动 .rdata，可交换部分减去 .rdata 长度
+	unsigned int newSize = ProcessManager::USIZE + u.u_MemoryDescriptor.m_DataSize + u.u_MemoryDescriptor.m_StackSize - u.u_MemoryDescriptor.m_RdataSize;	// 移动 .rdata，可交换部分减去 .rdata 长度
 	/* 将进程图像由USIZE扩充为USIZE + dataSize + stackSize */
 	u.u_procp->Expand(newSize);
 
@@ -652,7 +652,7 @@ void ProcessManager::Exec()
 	u.u_MemoryDescriptor.DisplayPageTable();
 
 	/* 从exe文件中依次读入.text段、.data段、.rdata段、.bss段 */
-	parser.Relocate(pInode, sharedText);
+	parser.Relocate(pInode, sharedText);	// 修改了 Relocate 函数，使得能够正确地选择读入 rdata 段
 
 	/* .text段在swap分区上留复本 */
 	if(sharedText == 0)
