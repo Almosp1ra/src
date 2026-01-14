@@ -437,21 +437,18 @@ void ProcessManager::Fork()
 		u.u_utime = 0;
 
 		// 输出子进程实空间信息
-		Diagnose::Write("Child Process %d: p_addr=%x, p_size=%x, x_caddr=%x, x_size=%x\n",
-			u.u_procp->p_pid, u.u_procp->p_addr, u.u_procp->p_size,
-			u.u_procp->p_textp ? u.u_procp->p_textp->x_caddr : 0,
-			u.u_procp->p_textp ? u.u_procp->p_textp->x_size : 0);
+		Diagnose::Write("\nChild Process %x, from Parent Process %x\n",
+		u.u_procp->p_pid,u.u_procp->p_ppid);
+		
+		Diagnose::Write("p_addr %x, x_addr %x, p_size %x, x_size %x\n",
+		u.u_procp->p_addr,u.u_procp->p_textp->x_caddr,u.u_procp->p_size,u.u_procp->p_textp->x_size);
+
+		u.u_MemoryDescriptor.DisplayPageTable();
 	}
 	else
 	{
 		/* 父进程进程fork()系统调用返回子进程PID */
 		u.u_ar0[User::EAX] = child->p_pid;
-
-		// 输出父进程实空间信息
-		Diagnose::Write("Parent Process %d: p_addr=%x, p_size=%x, x_caddr=%x, x_size=%x\n",
-			u.u_procp->p_pid, u.u_procp->p_addr, u.u_procp->p_size,
-			u.u_procp->p_textp ? u.u_procp->p_textp->x_caddr : 0,
-			u.u_procp->p_textp ? u.u_procp->p_textp->x_size : 0);
 	}
 
 	return;

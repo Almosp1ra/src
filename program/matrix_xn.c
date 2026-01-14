@@ -3,10 +3,10 @@
 
 #define M 32
 int version = 1;
+int uninit; // bss segment
 int matrixOriginalA[M][M];
 int matrixOriginalB[M][M];
 int matrixDes[M][M];
-static int uninit; // bss segment
 
 void produce(int row, int column) {
     int i;
@@ -29,19 +29,6 @@ static int my_atoi(const char *s) {
 }
    
 int main1(int argc, char *argv[]) {
-    // 验证虚空间布局
-    printf("Process rank %d: code segment &main = %p\n", 0, &main1);
-    printf("data segment &version = %p, &matrixOriginalA = %p\n", &version, &matrixOriginalA);
-    char *rodata = "rodata string";
-    printf("rodata segment rodata = %p\n", rodata);
-    static int uninit; // bss
-    printf("bss segment &uninit = %p\n", &uninit);
-    int local = 42; // stack
-    printf("stack segment &local = %p\n", &local);
-    int *heap = malloc(sizeof(int));
-    printf("heap segment heap = %p\n", heap);
-    free(heap);
-
     int i, j;
     for (i = 0; i < M; i++) {
         for (j = 0; j < M; j++) {
@@ -77,10 +64,6 @@ int main1(int argc, char *argv[]) {
             child_pids[i] = pid;
         }
     }
-
-    // 每个进程输出虚空间信息
-    printf("Process rank %d (PID %d): code &main = %p, data &version = %p, rodata %p, bss &uninit = %p, stack &local = %p\n",
-           rank, getpid(), &main1, &version, "rodata string", &uninit, &local);
 
     /* 每个进程计算自己那一段行：[from, to) */
     int from = (rank * M) / num_procs;
