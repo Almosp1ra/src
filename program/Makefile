@@ -55,7 +55,8 @@ SHELL_OBJS =$(TARGET)\cat.exe	\
 			$(TARGET)\getproc.exe	\
 			$(TARGET)\myShell.exe	\
 			$(TARGET)\kill.exe \
-			$(TARGET)\divider.exe
+			$(TARGET)\divider.exe \
+			$(TARGET)\matrix_xn.exe
 
 #$(TARGET)\performance.exe
 			
@@ -178,6 +179,10 @@ $(TARGET)\kill.exe :	kill.c
 $(TARGET)\divider.exe :	divider.c
 	$(CC) $(CFLAGS) -I"$(INCLUDE)" -I"$(LIB_INCLUDE)"  $< -e _main1 $(V6++LIB) -o $@
 	copy $(TARGET)\divider.exe $(MAKEIMAGEPATH)\$(BIN)\divider
+
+$(TARGET)\matrix_xn.exe :	matrix_xn.c
+	$(CC) $(CFLAGS) -I"$(INCLUDE)" -I"$(LIB_INCLUDE)"  $< -e _main1 $(V6++LIB) -o $@
+	copy $(TARGET)\matrix_xn.exe $(MAKEIMAGEPATH)\$(BIN)\matrix_xn
 
 clean:
 	del $(TARGET)\*.exe
