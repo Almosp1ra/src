@@ -75,13 +75,18 @@ bool MemoryDescriptor::EstablishUserPageTable( unsigned long textVirtualAddress,
 	 * 除了 Exec 中输入参数是程序头里的逻辑段的信息，不过Exec里同样包含用这些信息更新 MD 字段的逻辑，所以用不着
 	 */
 
-	this->m_TextStartAddress = textVirtualAddress;
-	this->m_TextSize = textSize;
-	this->m_DataStartAddress = dataVirtualAddress;
-	this->m_DataSize = dataSize;
-	this->m_StackSize = stackSize;
-	this->m_RdataStartAddress = rdataVirtualAddress;
-	this->m_RdataSize = rdataSize;
+	/* 不能用输入的值更新！因为 SBreak 里会把新的虚数据段长度作为 dataSize 输入，
+	 * 后面还要用 newSize - m_DataSize 计算虚数据段长度的改变值，
+	 * 这里直接更新 m_DataSize 会导致后续计算出改变值为 0
+	 */
+
+	// this->m_TextStartAddress = textVirtualAddress;
+	// this->m_TextSize = textSize;
+	// this->m_DataStartAddress = dataVirtualAddress;
+	// this->m_DataSize = dataSize;
+	// this->m_StackSize = stackSize;
+	// this->m_RdataStartAddress = rdataVirtualAddress;
+	// this->m_RdataSize = rdataSize;
 
 	/* 将相对地址映照表根据正文段和数据段在内存中的起始地址pText->x_caddr、p_addr，建立用户态内存区的页表映射 */
 	this->MapToPageTable();
