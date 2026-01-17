@@ -96,7 +96,7 @@ int main1(int argc, char *argv[]) {
         }
     }
     else {
-        printf("calculation complete, rank = %d\n, pid = ", rank, getpid());
+        printf("calculation complete, rank = %d, pid =%d\n", rank, getpid());
     }
 
     return 0;
