@@ -100,6 +100,8 @@ void MemoryDescriptor::DisplayPageTable()
 {
 	unsigned int i,j;
 
+	Diagnose::Write("The length of MemoryDescriptor is %d Byte.\n",sizeof(MemoryDescriptor));
+
 	Diagnose::Write("<PPDA,%x>  ",Machine::Instance().GetKernelPageTable().m_Entrys[1023].m_PageBaseAddress);
 
 	PageTable* pUserPageTable = Machine::Instance().GetUserPageTableArray();
