@@ -364,7 +364,7 @@ void Process::SBreak()
 		return;
 	}
 
-	int change = newSize - md.m_DataSize;
+	int change = newSize - md.m_DataSize;	// 这条语句原本在 EstablishUserPageTable 之后执行，但是新的 Establish 函数逻辑会导致原执行顺序计算出 change = 0
 
 	if ( false == u.u_MemoryDescriptor.EstablishUserPageTable(md.m_TextStartAddress, 
 						md.m_TextSize, md.m_DataStartAddress, newSize, md.m_StackSize, md.m_RdataStartAddress, md.m_RdataSize) )

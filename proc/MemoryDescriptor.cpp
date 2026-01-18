@@ -70,17 +70,10 @@ bool MemoryDescriptor::EstablishUserPageTable( unsigned long textVirtualAddress,
 		return false;
 	}
 
-	/* 给的实验参考里，这里更新了 MemoryDescriptor 的各逻辑段信息，但是按现在的实现来看不做也可以
-	 * 因为目前引用这个函数的场景，输入参数都是直接用的 MemoryDescriptor 的各逻辑段信息，所以相当于没更新
-	 * 除了 Exec 中输入参数是程序头里的逻辑段的信息，不过Exec里同样包含用这些信息更新 MD 字段的逻辑，所以用不着
-	 */
-
-	/* 不能用输入的值更新！因为 SBreak 里会把新的虚数据段长度作为 dataSize 输入，
+	/* 如果用输入的值更新下面的这些字段，因为 SBreak 里会把新的虚数据段长度作为 dataSize 输入，
 	 * 后面还要用 newSize - m_DataSize 计算虚数据段长度的改变值，
-	 * 这里直接更新 m_DataSize 会导致后续计算出改变值为 0，Expand 扩展内存会失败
-	 */
-
-	/* 其实更新也可以，就是要同步改 SBreak，先计算改变值再调用此函数
+	 * 这里直接更新 m_DataSize 会导致后续计算出改变值为 0，Expand 扩展内存会失败。
+	 * 为了避免这个问题，这里选择了改变 SBreak 中的操作顺序，先做 newSize - m_DataSize 再调用该函数 
 	 */
 
 	this->m_TextStartAddress = textVirtualAddress;
