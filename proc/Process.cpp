@@ -364,6 +364,8 @@ void Process::SBreak()
 		return;
 	}
 
+	int change = newSize - md.m_DataSize;
+
 	if ( false == u.u_MemoryDescriptor.EstablishUserPageTable(md.m_TextStartAddress, 
 						md.m_TextSize, md.m_DataStartAddress, newSize, md.m_StackSize, md.m_RdataStartAddress, md.m_RdataSize) )
 	{
@@ -371,8 +373,7 @@ void Process::SBreak()
 		//aRetU(u.u_qsav);
 		return;
 	}
-
-	int change = newSize - md.m_DataSize;
+	
 	md.m_DataSize = newSize;
 	newSize += ProcessManager::USIZE + md.m_StackSize - md.m_RdataSize;	// 之后用到的 newSize 都是实空间可交换部分的长度，减去 rdata
 
